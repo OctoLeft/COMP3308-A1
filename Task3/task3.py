@@ -4,12 +4,13 @@ def load_words(filename):
         print(words)
     return words
 
-def load_message_words(file_path):
-    with open(file_path, 'r') as file:
-        text = file.read().lower()
+def load_message_words(filename):
+    with open(filename, 'r') as f:
+        text = f.read().lower()
+        text = text.replace("'", "")
         words = []
         current_word = ""
-        for character in text:
+        for i, character in enumerate(text):
             if character.isalpha():
                 current_word += character
             elif current_word:
@@ -17,7 +18,6 @@ def load_message_words(file_path):
                 current_word = ""
         if current_word:
             words.append(current_word)
-        print(words)
     return words
 
 def task3(message_filename, dictionary_filename, threshold):
