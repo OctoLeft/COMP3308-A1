@@ -1,5 +1,5 @@
-import heapq
 import string
+import heapq
 from collections import deque
 
 def letter_swaps_generator(letters):
@@ -24,7 +24,6 @@ def swap_letters(text, swap):
         
     return ''.join([swap_dict.get(char, char) for char in text])
 
-
 # Keep your code for reading message and dictionary
 def load_words(filename):
     with open(filename, 'r') as f:
@@ -36,53 +35,167 @@ def check_words(words, dictionary, threshold):
     percentage = sum(1 for word in cleaned_words if word in dictionary) / len(cleaned_words) * 100
     return percentage >= threshold
 
-def search_algorithm(algorithm, message_filename, dictionary_filename, threshold, letters, debug):
-    message_words = load_words(message_filename)
+def dfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
     dictionary = set(load_words(dictionary_filename))
     letter_swaps = letter_swaps_generator(letters)
-
-    message = ' '.join(message_words)
-    if algorithm == 'd': # check if algorithm is 'd'
-        fringe = [(message, "", 0)] # use a stack instead of a queue
-    else:
-        fringe = deque([(message, "", 0)]) # use a queue for other algorithms
-    max_fringe_size = len(fringe)
+    stack = [(message, "", 0)]
+    max_fringe_size = 1
     expanded_nodes_count = 0
-    max_search_depth = -1 # set max_search_depth to -1 instead of 0
+    max_search_depth = -1
     expanded_nodes = []
 
-    visited_states = set() # create a set to store visited states
+    visited_states = set()
 
-    while fringe:
-        if algorithm == 'd': # check if algorithm is 'd'
-            current_state, key_sequence, depth = fringe.pop() # use pop instead of popleft
-        else:
-            current_state, key_sequence, depth = fringe.popleft()
+    while stack:
+        current_state, key_sequence, depth = stack.pop()
         expanded_nodes_count += 1
+        if expanded_nodes_count > 1000:
+                return 'No solution found.', None, None, expanded_nodes_count - 1, max_fringe_size, max_search_depth, expanded_nodes
+        
         if debug == 'y' and len(expanded_nodes) < 10:
             expanded_nodes.append(current_state)
-            
+
         if check_words(current_state.split(), dictionary, threshold):
             return current_state, key_sequence, depth, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
-    
-        # Remove the depth limit condition
+
+        if depth > max_search_depth:
+            max_search_depth = depth
+
         children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
-        if algorithm == 'd': # check if algorithm is 'd'
-            children.reverse() # reverse the order of the children
+        children.reverse()
         for child in children:
-            if child[0] not in visited_states: # check if the child state has been visited before
-                if algorithm == 'd': # check if algorithm is 'd'
-                    fringe.append(child) # use append instead of appendleft
-                else:
-                    fringe.appendleft(child)
-                visited_states.add(child[0]) # add the child state to the visited set
-        max_fringe_size = max(max_fringe_size, len(fringe))
-        max_search_depth = max(max_search_depth, depth) # set max_search_depth to depth instead of depth + 1
+            visited_states.add(child[0])
+            stack.append(child)
+
+        max_fringe_size = max(max_fringe_size, len(stack))
 
     return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
+def bfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    queue = deque([(message, "", 0)])
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
+
+    visited_states = set()
+
+    while queue:
+        current_state, key_sequence, depth = queue.popleft()
+        expanded_nodes_count += 1
+        if debug == 'y' and len(expanded_nodes) < 10:
+            expanded_nodes.append(current_state)
+
+        if check_words(current_state.split(), dictionary, threshold):
+            return current_state, key_sequence, depth, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+        if depth > max_search_depth:
+            max_search_depth = depth
+
+        children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
+        for child in children:
+            if child[0] not in visited_states:
+                visited_states.add(child[0])
+                queue.append(child)
+
+        max_fringe_size = max(max_fringe_size, len(queue))
+
+        if expanded_nodes_count >= 1000:
+            return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+        
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+def ids_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
+
+    for depth_limit in range(0, 1000):
+        visited_states = set()
+        stack = [(message, "", 0)]
+
+        while stack:
+            current_state, key_sequence, depth = stack.pop()
+            expanded_nodes_count += 1
+            if debug == 'y' and len(expanded_nodes) < 10:
+                expanded_nodes.append(current_state)
+
+            if check_words(current_state.split(), dictionary, threshold):
+                return current_state, key_sequence, depth, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+            if depth > max_search_depth:
+                max_search_depth = depth
+
+            if depth < depth_limit:
+                children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
+                children.reverse()
+                for child in children:
+                    if child[0] not in visited_states:
+                        visited_states.add(child[0])
+                        stack.append(child)
+                        max_fringe_size = max(max_fringe_size, len(stack))
+            elif depth == depth_limit:
+                visited_states.add(current_state)
+
+        if expanded_nodes_count >= 1000:
+            return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size + 2, max_search_depth, expanded_nodes
+
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+def ucs_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    heap = [(0, message, "", 0)]
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
+
+    visited_states = set()
+
+    while heap:
+        _, current_state, key_sequence, depth = heapq.heappop(heap)
+        expanded_nodes_count += 1
+        if expanded_nodes_count > 1000:
+            return 'No solution found.', None, None, expanded_nodes_count - 1, max_fringe_size, max_search_depth, expanded_nodes
+        
+        if debug == 'y' and len(expanded_nodes) < 10:
+            expanded_nodes.append(current_state)
+
+        if check_words(current_state.split(), dictionary, threshold):
+            return current_state, key_sequence, depth, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+        if depth > max_search_depth:
+            max_search_depth = depth
+
+        children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
+        for child in children:
+            if child[0] not in visited_states:
+                visited_states.add(child[0])
+                heapq.heappush(heap, (depth+1, child[0], child[1], depth+1))
+
+        max_fringe_size = max(max_fringe_size, len(heap))
+
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+
 def task4(algorithm, message_filename, dictionary_filename, threshold, letters, debug):
-    result = search_algorithm(algorithm, message_filename, dictionary_filename, threshold, letters, debug)
+
+    if algorithm == 'd':
+        result = dfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
+    elif algorithm == 'b':
+        result = bfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
+    elif algorithm == 'i':
+        result = ids_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
     
     if result[0] == 'No solution found.':
         output = f"No solution found.\n\n"
