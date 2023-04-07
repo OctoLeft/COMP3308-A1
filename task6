@@ -1,270 +1,207 @@
 import string
 import heapq
+from collections import deque
 
-class BreadthFirstSearch:
-    """
-    Breadth-first search algorithm.
-    """
-    def __init__(self, dictionary, threshold, letters, debug=False):
-        self.dictionary = dictionary
-        self.threshold = threshold
-        self.letters = letters
-        self.debug = debug
+def letter_swaps_generator(letters):
+    swaps = []
+    for i in range(len(letters)):
+        for j in  range(i + 1, len(letters)):
+            if ord(letters[i]) < ord(letters[j]):
+                swaps.append(letters[i] + letters[j])
+            else:
+                swaps.append(letters[j] + letters[i])
+    swaps.sort(key=lambda x: (x[0], x[1]))
+    return swaps
 
-    def search(self, initial_state):
-        frontier = [(initial_state, 0)]
-        explored = set()
-        num_nodes_expanded = 0
-        max_fringe_size = 1
-        max_depth = 0
+# The swap function from task 1
+def swap_letters(text, swap):
+    swap_dict = {}
+    for i in range(0, len(swap), 2):
+        swap_dict[swap[i].lower()] = swap[i + 1].lower()
+        swap_dict[swap[i].upper()] = swap[i + 1].upper()
+        swap_dict[swap[i + 1].lower()] = swap[i].lower()
+        swap_dict[swap[i + 1].upper()] = swap[i].upper()
+        
+    return ''.join([swap_dict.get(char, char) for char in text])
 
-        while frontier:
-            state, path_cost = frontier.pop(0)
-            message, key = state
-
-            if message not in explored:
-                explored.add(message)
-                num_nodes_expanded += 1
-                if self.debug:
-                    print(f"Exploring node with key {key} and path cost {path_cost}")
-                    print(decrypt(message, key))
-
-                if all(letter in key for letter in self.letters):
-                    return key, path_cost, num_nodes_expanded, max_fringe_size, max_depth
-
-                for possible_key in get_possible_keys(key):
-                    child_message = decrypt(message, possible_key)
-                    child_state = (child_message, possible_key)
-                    frontier.append((child_state, path_cost + 1))
-
-                max_fringe_size = max(max_fringe_size, len(frontier))
-                max_depth = max(max_depth, path_cost)
-
-        return None
-class GreedySearch:
-    """
-    Greedy search algorithm.
-    """
-    def __init__(self, dictionary, threshold, letters, debug=False):
-        self.dictionary = dictionary
-        self.threshold = threshold
-        self.letters = letters
-        self.debug = debug
-
-    def search(self, initial_state):
-        frontier = [(initial_state, 0)]
-        explored = set()
-        num_nodes_expanded = 0
-        max_fringe_size = 1
-        max_depth = 0
-
-        while frontier:
-            state, path_cost = frontier.pop(0)
-            message, key = state
-
-            if message not in explored:
-                explored.add(message)
-                num_nodes_expanded += 1
-                if self.debug:
-                    print(f"Exploring node with key {key} and path cost {path_cost}")
-                    print(decrypt(message, key))
-
-                if all(letter in key for letter in self.letters):
-                    return key, path_cost, num_nodes_expanded, max_fringe_size, max_depth
-
-                children = []
-                for possible_key in get_possible_keys(key):
-                    child_message = decrypt(message, possible_key)
-                    children.append((child_message, possible_key))
-
-                max_fringe_size = max(max_fringe_size, len(frontier) + len(children))
-                max_depth = max(max_depth, path_cost + 1)
-
-                children_scores = [(child, heuristic(child[0], self.dictionary, self.threshold, self.letters)) for child in children]
-                children_scores.sort(key=lambda x: x[1], reverse=True)
-                frontier = [child_score for child_score in children_scores if child_score[0][0] not in explored] + frontier
-
-        return None
-class AStarSearch:
-    """
-    A* search algorithm implementation.
-    """
-    def __init__(self, words, threshold, letters, debug):
-        self.words = words
-        self.threshold = threshold
-        self.letters = letters
-        self.debug = debug
-
-    def search(self, initial_state):
-        """
-        Perform an A* search starting from the initial state.
-        """
-        num_nodes_expanded = 0
-        max_fringe_size = 0
-        max_depth = 0
-
-        # Calculate the initial heuristic value
-        message, key = initial_state
-        h = heuristic(message, self.words, self.threshold, key)
-
-        # Initialize the fringe with the initial state and its heuristic value
-        fringe = [(h, initial_state)]
-
-        # Initialize the set of visited states
-        visited = set()
-
-        while fringe:
-            # Get the state with the lowest f value from the fringe
-            f, state = heapq.heappop(fringe)
-
-            # Check if the goal state has been reached
-            message, key = state
-            if is_word(message, self.words, self.threshold):
-                path_cost = len(key)
-                return key, path_cost, num_nodes_expanded, max_fringe_size, max_depth
-
-            # Add the state to the set of visited states
-            visited.add(state)
-
-            # Expand the state by generating all possible keys
-            possible_keys = get_possible_keys(key)
-            for new_key in possible_keys:
-                # Check if the new state has already been visited
-                new_state = (message, new_key)
-                if new_state in visited:
-                    continue
-
-                # Calculate the new heuristic value
-                h = heuristic(message, self.words, self.threshold, new_key)
-
-                # Add the new state to the fringe
-                num_nodes_expanded += 1
-                depth = len(new_key)
-                max_depth = max(max_depth, depth)
-                heapq.heappush(fringe, (f+h, new_state))
-                max_fringe_size = max(max_fringe_size, len(fringe))
-
-        # No solution found
-        return None
-
-
+# Keep your code for reading message and dictionary
 def load_words(filename):
-    """
-    Load words from a file and return a set of lowercase words.
-    """
     with open(filename, 'r') as f:
-        words = set(line.strip().lower() for line in f)
+        words = [word.strip() for word in f.readlines()]
     return words
 
+def check_words(words, dictionary, threshold):
+    cleaned_words = [word.lower().translate(str.maketrans('', '', string.punctuation)) for word in words]
+    percentage = sum(1 for word in cleaned_words if word in dictionary) / len(cleaned_words) * 100
+    return percentage >= threshold
 
-def load_message(filename):
-    """
-    Load the encrypted message from a file and return it as a string.
-    """
-    with open(filename, 'r') as f:
-        message = f.read()
-    return message.strip()
+def dfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    stack = [(message, "", 0)]
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
 
+    visited_states = set()
 
-def count_letters(message):
-    """
-    Count the number of occurrences of each letter in the message.
-    """
-    letter_counts = {letter: 0 for letter in string.ascii_uppercase}
-    for letter in message:
-        if letter in string.ascii_uppercase:
-            letter_counts[letter] += 1
-    return letter_counts
+    while stack:
+        current_state, key_sequence, depth = stack.pop()
+        expanded_nodes_count += 1
+        if expanded_nodes_count > 1000:
+                return 'No solution found.', None, None, expanded_nodes_count - 1, max_fringe_size, max_search_depth, expanded_nodes
+        
+        if debug == 'y' and len(expanded_nodes) < 10:
+            expanded_nodes.append(current_state)
 
+        if check_words(current_state.split(), dictionary, threshold):
+            return current_state, key_sequence, depth, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
-def decrypt(message, key):
-    """
-    Decrypt the message using the given key.
-    """
-    padded_key = str(key).ljust(len(string.ascii_uppercase), 'X')
-    translation_table = str.maketrans(padded_key, string.ascii_uppercase)
-    return message.translate(translation_table)
+        if depth > max_search_depth:
+            max_search_depth = depth
 
+        children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
+        children.reverse()
+        for child in children:
+            visited_states.add(child[0])
+            stack.append(child)
 
-def is_word(word, dictionary, threshold):
-    """
-    Check if a word is in the dictionary or is above the given threshold.
-    """
-    return word.lower() in dictionary or len(word) >= threshold
+        max_fringe_size = max(max_fringe_size, len(stack))
 
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
-def get_possible_keys(key):
-    """
-    Get all possible keys that can be obtained by swapping two letters in the given key.
-    """
-    key_list = list(key)
-    possible_keys = []
-    for i in range(len(key_list)):
-        for j in range(i+1, len(key_list)):
-            new_key = key_list[:]
-            new_key[i], new_key[j] = new_key[j], new_key[i]
-            possible_keys.append(''.join(new_key))
-    return possible_keys
+def bfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    queue = deque([(message, "", 0)])
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
+    parent_nodes = {}
+    
+    while queue:
+        current_state, key_sequence, depth = queue.popleft()
+        expanded_nodes_count += 1
+        if debug == 'y' and len(expanded_nodes) < 10:
+            expanded_nodes.append(current_state)
+        
+        if check_words(current_state.split(), dictionary, threshold):
+            # if the message is deciphered, construct the path from the root to the goal node
+            path = []
+            node = current_state
+            while node != message:
+                path.append(parent_nodes[node])
+                node = parent_nodes[node]
+                
+            path.reverse()
+            key_sequence = ''.join(path)
+            return current_state, key_sequence, depth, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+        
+        if depth > max_search_depth:
+            max_search_depth = depth
+        
+        children = [(swap_letters(current_state, new_key), new_key, depth + 1) for new_key in letter_swaps]
+        for child in children:
+            if child[0] not in parent_nodes:
+                parent_nodes[child[0]] = child[1]
+                queue.append(child)
+                max_fringe_size = max(max_fringe_size, len(queue))
+    
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
+def greedy_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    heap = [(h(message, dictionary, threshold), message)]
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
 
-def heuristic(message, dictionary, threshold, key):
-    """
-    Calculate the heuristic value of a given key.
-    """
-    decrypted_message = decrypt(message, key)
-    words = decrypted_message.split()
-    score = 0
-    for word in words:
-        if is_word(word, dictionary, threshold):
-            score += 1
-    return score / len(words)
+    while heap:
+        _, current_state = heapq.heappop(heap)
+        expanded_nodes_count += 1
+        if expanded_nodes_count > 1000:
+            return 'No solution found.', None, None, expanded_nodes_count - 1, max_fringe_size, max_search_depth, expanded_nodes
 
+        if debug == 'y' and len(expanded_nodes) < 10:
+            expanded_nodes.append(current_state)
 
-def search(message, dictionary, threshold, letters, debug, algorithm='breadth_first'):
-    """
-    Search for the key that produces a decrypted message with a high number of English words.
-    """
-    # Initialize the search problem
-    words = set(word.upper() for word in dictionary)
-    initial_state = (message, {})
-    if algorithm == 'a*':
-        search_algorithm = AStarSearch(words, threshold, letters, debug)
-    elif algorithm == 'greedy':
-        search_algorithm = GreedySearch(words, threshold, letters, debug)
-    else:
-        search_algorithm = BreadthFirstSearch(words, threshold, letters, debug)
+        if check_words(current_state.split(), dictionary, threshold):
+            return current_state, None, 0, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
-    # Run the search algorithm
-    result = search_algorithm.search(initial_state)
-    if result is not None and isinstance(result, tuple):
-        key, path_cost, num_nodes_expanded, max_fringe_size, max_depth = result
-        return key
-    else:
-        return None
+        if len(current_state) > max_search_depth:
+            max_search_depth = len(current_state)
 
-      
+        children = [(swap_letters(current_state, new_key), h(swap_letters(current_state, new_key), dictionary, threshold)) for new_key in letter_swaps]
+        children.sort(key=lambda x: x[1])
+        for child in children:
+            heapq.heappush(heap, (child[1], child[0]))
+
+        max_fringe_size = max(max_fringe_size, len(heap))
+
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+def astar_algorithm(message_filename, dictionary_filename, threshold, letters, debug):
+    message = open(message_filename, 'r').read().strip()
+    dictionary = set(load_words(dictionary_filename))
+    letter_swaps = letter_swaps_generator(letters)
+    heap = [(h(message, dictionary, threshold), 0, message, "")]
+    max_fringe_size = 1
+    expanded_nodes_count = 0
+    max_search_depth = -1
+    expanded_nodes = []
+
+    while heap:
+        _, cost, current_state, key_sequence = heapq.heappop(heap)
+        expanded_nodes_count += 1
+        if expanded_nodes_count > 1000:
+            return 'No solution found.', None, None, expanded_nodes_count - 1, max_fringe_size, max_search_depth, expanded_nodes
+
+        if debug == 'y' and len(expanded_nodes) < 10:
+            expanded_nodes.append(current_state)
+
+        if check_words(current_state.split(), dictionary, threshold):
+            return current_state, key_sequence, cost, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+        if len(current_state) > max_search_depth:
+            max_search_depth = len(current_state)
+
+        children = [(h(child[0], dictionary, threshold) + cost + 1, cost + 1, child[0], key_sequence + child[1]) for child in
+                    [(swap_letters(current_state, new_key), new_key) for new_key in letter_swaps]]
+
+        children.sort(key=lambda x: x[0])
+        for child in children:
+            heapq.heappush(heap, child)
+
+        max_fringe_size = max(max_fringe_size, len(heap))
+
+    return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
+
+def h(state, dictionary, threshold):
+    cleaned_words = [word.lower().translate(str.maketrans('', '', string.punctuation)) for word in state.split()]
+    num_correct_words = sum(1 for word in cleaned_words if word in dictionary)
+    return -num_correct_words * (100 - threshold) / 100
+
 def task6(algorithm, message_filename, dictionary_filename, threshold, letters, debug):
-    """
-    Decrypt the message using the specified algorithm.
-    """
-    message = load_message(message_filename)
-    dictionary = load_words(dictionary_filename)
-    if algorithm == 'a':
-        key = search(message, dictionary, threshold, letters, debug, 'a*')
-    elif algorithm == 'g':
-        key = search(message, dictionary, threshold, letters, debug, 'greedy')
+    if algorithm == 'g':
+        result = greedy_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
+    elif algorithm == 'a':
+        result = astar_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
     else:
-        key = search(message, dictionary, threshold, letters, debug, 'breadth_first')
-    if key is not None:
-        decrypted_message = decrypt(message, key)
-        solution = f"Solution: {decrypted_message}\n\nKey: {key}\nPath Cost: {path_cost}\n\nNum nodes expanded: {num_nodes_expanded}\nMax fringe size: {max_fringe_size}\nMax depth: {max_depth}\n\nFirst few expanded states:\n"
-        for state in expanded_states[:5]:
-            state_message, state_key = state
-            solution += f"{state_message}\n\n{state_key}\n\n"
-        return solution
-    else:
-        return ''
+        result = task4(algorithm, message_filename, dictionary_filename, threshold, letters, debug)
 
+    if result[0] == 'No solution found.':
+        return result[0], None, None, result[3], result[4], result[5], result[6]
+
+    solution, key, depth, nodes_expanded, max_fringe_size, max_depth, expanded_nodes = result
+    return f"Solution: {solution}\n\nKey: {key}\nPath Cost: {depth}\n\nNum nodes expanded: {nodes_expanded}\nMax fringe size: {max_fringe_size}\nMax depth: {max_depth}", key, depth, nodes_expanded, max_fringe_size, max_depth, expanded_nodes
+ 
 if __name__ == '__main__':
     # Example function calls below, you can add your own to test the task6 function
     print(task6('g', 'secret_msg.txt', 'common_words.txt', 90, 'AENOST', 'n'))
