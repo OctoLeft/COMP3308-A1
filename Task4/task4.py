@@ -116,12 +116,15 @@ def ids_algorithm(message_filename, dictionary_filename, threshold, letters, deb
     expanded_nodes = []
 
     for depth_limit in range(0, 1000):
-        visited_states = set()
         stack = [(message, "", 0)]
 
         while stack:
             current_state, key_sequence, depth = stack.pop()
-            expanded_nodes_count += 1
+            if expanded_nodes_count < 1000:
+                expanded_nodes_count += 1
+            else:
+                break
+
             if debug == 'y' and len(expanded_nodes) < 10:
                 expanded_nodes.append(current_state)
 
@@ -135,15 +138,13 @@ def ids_algorithm(message_filename, dictionary_filename, threshold, letters, deb
                 children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
                 children.reverse()
                 for child in children:
-                    if child[0] not in visited_states:
-                        visited_states.add(child[0])
-                        stack.append(child)
-                        max_fringe_size = max(max_fringe_size, len(stack))
+                    stack.append(child)
+                    max_fringe_size = max(max_fringe_size, len(stack))
             elif depth == depth_limit:
-                visited_states.add(current_state)
+                pass
 
         if expanded_nodes_count >= 1000:
-            return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size + 2, max_search_depth, expanded_nodes
+            return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
     return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
 
@@ -156,8 +157,6 @@ def ucs_algorithm(message_filename, dictionary_filename, threshold, letters, deb
     expanded_nodes_count = 0
     max_search_depth = -1
     expanded_nodes = []
-
-    visited_states = set()
 
     while heap:
         _, current_state, key_sequence, depth = heapq.heappop(heap)
@@ -176,14 +175,11 @@ def ucs_algorithm(message_filename, dictionary_filename, threshold, letters, deb
 
         children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
         for child in children:
-            if child[0] not in visited_states:
-                visited_states.add(child[0])
-                heapq.heappush(heap, (depth+1, child[0], child[1], depth+1))
+            heapq.heappush(heap, (depth+1, child[0], child[1], depth+1))
 
         max_fringe_size = max(max_fringe_size, len(heap))
 
     return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
-
 
 def task4(algorithm, message_filename, dictionary_filename, threshold, letters, debug):
 
