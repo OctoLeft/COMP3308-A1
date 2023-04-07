@@ -82,8 +82,6 @@ def bfs_algorithm(message_filename, dictionary_filename, threshold, letters, deb
     max_search_depth = -1
     expanded_nodes = []
 
-    visited_states = set()
-
     while queue:
         current_state, key_sequence, depth = queue.popleft()
         expanded_nodes_count += 1
@@ -97,13 +95,11 @@ def bfs_algorithm(message_filename, dictionary_filename, threshold, letters, deb
             max_search_depth = depth
 
         children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
-        
-        max_fringe_size = max(max_fringe_size, len(queue) + len(children))
 
         for child in children:
-            if child[0] not in visited_states:
-                visited_states.add(child[0])
-                queue.append(child)
+            queue.append(child)
+
+        max_fringe_size = max(max_fringe_size, len(queue))
 
         if expanded_nodes_count >= 1000:
             return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
