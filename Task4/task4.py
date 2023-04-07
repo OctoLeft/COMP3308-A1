@@ -97,12 +97,13 @@ def bfs_algorithm(message_filename, dictionary_filename, threshold, letters, deb
             max_search_depth = depth
 
         children = [(swap_letters(current_state, new_key), key_sequence + new_key, depth + 1) for new_key in letter_swaps]
+        
+        max_fringe_size = max(max_fringe_size, len(queue) + len(children))
+
         for child in children:
             if child[0] not in visited_states:
                 visited_states.add(child[0])
                 queue.append(child)
-
-        max_fringe_size = max(max_fringe_size, len(queue))
 
         if expanded_nodes_count >= 1000:
             return 'No solution found.', None, None, expanded_nodes_count, max_fringe_size, max_search_depth, expanded_nodes
@@ -196,6 +197,8 @@ def task4(algorithm, message_filename, dictionary_filename, threshold, letters, 
         result = bfs_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
     elif algorithm == 'i':
         result = ids_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
+    elif algorithm == 'u':
+        result = ucs_algorithm(message_filename, dictionary_filename, threshold, letters, debug)
     
     if result[0] == 'No solution found.':
         output = f"No solution found.\n\n"
